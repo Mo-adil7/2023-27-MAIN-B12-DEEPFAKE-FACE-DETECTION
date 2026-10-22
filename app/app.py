@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, session
+from werkzeug.utils import secure_filename
 import os
 import subprocess
 import sys
@@ -6,23 +7,36 @@ import json
 
 app = Flask(__name__)
 
-# Session security
-app.secret_key = "deepfake_project_secret_key_2026"
+# Basic session configuration
+# Change this secret before using the app beyond local testing.
+app.secret_key = os.environ.get(
+    "FLASK_SECRET_KEY",
+    "development-only-change-this-secret"
+)
 
-# Folder configuration
-UPLOAD_FOLDER = "uploads"
-DETECTED_FOLDER = "detected_faces"
+# Absolute paths based on the project directory
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+UPLOAD_FOLDER = os.path.join(PROJECT_ROOT, "uploads")
+DETECTED_FOLDER = os.path.join(PROJECT_ROOT, "detected_faces")
+
+DETECTION_SCRIPT = os.path.join(
+    PROJECT_ROOT,
+    "face_detection_backup.py",
+    "face_detection_unique.py"
+)
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(DETECTED_FOLDER, exist_ok=True)
 
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
+app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024  # 500 MB limit
 
-# Admin credentials
-ADMIN_USERNAME = "admin"
-ADMIN_PASSWORD = "1234"
+# Demo-only admin credentials.
+# Replace with environment variables and proper authentication before deployment.
+ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "1234")
 
-# Stores the latest detection results while the server is running
 latest_results = None
 
 
@@ -37,16 +51,11 @@ def home():
 
 @app.route("/admin/access", methods=["GET", "POST"])
 def admin_access():
-
     if request.method == "POST":
+        username = request.form.get("username", "")
+        password = request.form.get("password", "")
 
-        username = request.form.get("username")
-        password = request.form.get("password")
-
-        if (
-            username == ADMIN_USERNAME
-            and password == ADMIN_PASSWORD
-        ):
+        if username == ADMIN_USERNAME and password == ADMIN_PASSWORD:
             session["admin_logged_in"] = True
             return redirect(url_for("admin"))
 
@@ -62,23 +71,17 @@ def admin_access():
 
 @app.route("/admin")
 def admin():
-
     if not session.get("admin_logged_in"):
         return redirect(url_for("admin_access"))
 
-    return render_template(
-        "admin.html",
-        results=latest_results
-    )
+    return render_template("admin.html", results=latest_results)
 
 
 # ---------------- ADMIN LOGOUT ----------------
 
 @app.route("/admin/logout")
 def admin_logout():
-
     session.pop("admin_logged_in", None)
-
     return redirect(url_for("admin_access"))
 
 
@@ -86,12 +89,9 @@ def admin_logout():
 
 @app.route("/upload", methods=["POST"])
 def upload():
-
     global latest_results
 
-    # Check whether a file was submitted
     if "file" not in request.files:
-
         return render_template(
             "result.html",
             message="No file selected",
@@ -99,11 +99,9 @@ def upload():
             results=None
         )
 
-    file = request.files["file"]
+    uploaded_file = request.files["file"]
 
-    # Check whether the user selected a file
-    if file.filename == "":
-
+    if not uploaded_file.filename:
         return render_template(
             "result.html",
             message="No file selected",
@@ -111,75 +109,111 @@ def upload():
             results=None
         )
 
-    # Save the uploaded file
-    filepath = os.path.join(
-        app.config["UPLOAD_FOLDER"],
-        file.filename
-    )
+    filename = secure_filename(uploaded_file.filename)
 
-    file.save(filepath)
+    if not filename:
+        return render_template(
+            "result.html",
+            message="Invalid filename",
+            filename=None,
+            results=None
+        )
 
-    # Run the face detection program
-    command = [
-        sys.executable,
-        "face_detection.py",
-        filepath
-    ]
+    # Save the upload using an absolute path.
+    filepath = os.path.join(UPLOAD_FOLDER, filename)
+    uploaded_file.save(filepath)
 
-    process = subprocess.run(
-        command,
-        capture_output=True,
-        text=True
-    )
-
-    # Print output in the VS Code terminal
-    print(process.stdout)
-
-    if process.stderr:
-        print("Face detection errors:")
-        print(process.stderr)
-
-    # Check whether face detection completed successfully
-    if process.returncode != 0:
-
+    # Check the script path before attempting to run it.
+    if not os.path.isfile(DETECTION_SCRIPT):
+        app.logger.error("Detection script not found: %s", DETECTION_SCRIPT)
         latest_results = None
 
         return render_template(
             "result.html",
-            message="Face detection failed. Please try another video.",
-            filename=file.filename,
+            message="Detection script is missing. Check the project files.",
+            filename=filename,
             results=None
         )
 
-    # Read the JSON results printed by face_detection.py
-    output_lines = process.stdout.strip().splitlines()
+    command = [
+        sys.executable,
+        DETECTION_SCRIPT,
+        filepath
+    ]
 
+    try:
+        process = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            cwd=PROJECT_ROOT,
+            timeout=300
+        )
+    except subprocess.TimeoutExpired:
+        latest_results = None
+        return render_template(
+            "result.html",
+            message="Video processing timed out. Try a shorter video.",
+            filename=filename,
+            results=None
+        )
+    except OSError:
+        app.logger.exception("Could not start the detection process")
+        latest_results = None
+        return render_template(
+            "result.html",
+            message="Could not start video detection. Check the server log.",
+            filename=filename,
+            results=None
+        )
+
+    if process.stdout:
+        app.logger.info("Detection output:\n%s", process.stdout)
+
+    if process.stderr:
+        app.logger.error("Detection errors:\n%s", process.stderr)
+
+    if process.returncode != 0:
+        latest_results = None
+        return render_template(
+            "result.html",
+            message="Face detection failed. Check the server terminal for details.",
+            filename=filename,
+            results=None
+        )
+
+    # The detection script must print its JSON result on the final stdout line.
+    output_lines = process.stdout.strip().splitlines()
     latest_results = None
 
     if output_lines:
-
         try:
             latest_results = json.loads(output_lines[-1])
-
         except json.JSONDecodeError:
+            app.logger.error("Detection script did not return valid JSON.")
 
-            latest_results = None
-
-    # Display the result to the user
     return render_template(
         "result.html",
-        message="Face detection completed!",
-        filename=file.filename,
+        message="Detection completed." if latest_results is not None
+        else "Processing finished, but no valid result was returned.",
+        filename=filename,
         results=latest_results
     )
+
+
+# ---------------- ERROR HANDLERS ----------------
+
+@app.errorhandler(413)
+def file_too_large(_error):
+    return "File is too large. The maximum upload size is 500 MB.", 413
 
 
 # ---------------- RUN APPLICATION ----------------
 
 if __name__ == "__main__":
-
     app.run(
         host="0.0.0.0",
         port=5000,
-        debug=True
+        debug=False
     )
+

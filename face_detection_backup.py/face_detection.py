@@ -66,6 +66,12 @@ with mp_face_detection.FaceDetection(
             break
 
         frame_count += 1
+        if frame_count % 10 == 0 or frame_count == total_frames:
+            progress = (frame_count / total_frames * 100) if total_frames > 0 else 0
+            print(
+                f"PROGRESS:{frame_count}:{total_frames}:{progress:.1f}",
+                flush=True
+            )
 
         # Get original frame dimensions
         height, width = frame.shape[:2]
