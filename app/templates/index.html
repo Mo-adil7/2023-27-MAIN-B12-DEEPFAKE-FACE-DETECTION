@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Deepfake Face Detection</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            padding: 25px;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            background: #080b0d;
+            color: #ffffff;
+            font-family: Arial, sans-serif;
+        }
+
+        /* Main upload page */
+
+        .main-container {
+            width: 100%;
+            max-width: 560px;
+            padding: 38px 30px;
+
+            text-align: center;
+
+            background: #15191c;
+            border: 1px solid #27332f;
+            border-radius: 18px;
+            box-shadow: 0 0 35px rgba(0, 220, 140, 0.05);
+        }
+
+        .logo {
+            width: 65px;
+            height: 65px;
+            margin: 0 auto 22px;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            border: 1px solid #00c98b;
+            border-radius: 18px;
+
+            background: #08251d;
+            color: #00ffc3;
+            font-size: 32px;
+        }
+
+        h1 {
+            margin: 0 0 15px;
+            font-size: 29px;
+        }
+
+        .description {
+            margin-bottom: 30px;
+            color: #a9b8b3;
+            line-height: 1.7;
+        }
+
+        .upload-area {
+            padding: 24px 18px;
+
+            border: 1px dashed #3c5b50;
+            border-radius: 12px;
+            background: #0d1212;
+        }
+
+        input[type="file"] {
+            width: 100%;
+            margin: 15px 0 22px;
+            color: #cbd5d1;
+        }
+
+        input[type="file"]::file-selector-button {
+            padding: 10px 12px;
+            margin-right: 8px;
+
+            background: #263b33;
+            color: #ffffff;
+
+            border: 1px solid #426655;
+            border-radius: 7px;
+            cursor: pointer;
+        }
+
+        .upload-button {
+            width: 100%;
+            padding: 15px;
+
+            background: #00d486;
+            color: #06150e;
+
+            border: none;
+            border-radius: 9px;
+
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .upload-button:hover {
+            background: #00f0a0;
+        }
+
+        .upload-button:disabled {
+            opacity: 0.65;
+            cursor: wait;
+        }
+
+        .footer-note {
+            margin: 22px 0 0;
+            color: #77857f;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+
+        /* Full-screen loading overlay */
+
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+
+            display: none;
+            align-items: center;
+            justify-content: center;
+
+            padding: 24px;
+
+            background:
+                radial-gradient(
+                    ellipse at center,
+                    #0b211b 0%,
+                    #050a0b 55%,
+                    #020405 100%
+                );
+
+            overflow-y: auto;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .loading-layout {
+            width: 100%;
+            max-width: 850px;
+
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(240px, 0.9fr);
+            gap: 45px;
+
+            align-items: center;
+        }
+
+        /* Circular loading animation */
+
+        .loading-left {
+            text-align: center;
+            min-width: 0;
+        }
+
+        .loader-ring {
+            width: 175px;
+            height: 175px;
+            margin: 0 auto 32px;
+
+            position: relative;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            border: 2px solid #243b40;
+            border-radius: 50%;
+
+            box-shadow:
+                0 0 25px rgba(0, 255, 190, 0.05),
+                inset 0 0 20px rgba(0, 255, 190, 0.03);
+        }
+
+        .loader-ring::before {
+            content: "";
+            position: absolute;
+            inset: -3px;
+
+            border: 3px solid transparent;
+            border-top-color: #00ffbf;
+            border-right-color: #00dba5;
+
+            border-radius: 50%;
+
+            animation: rotate-ring 1.25s linear infinite;
+
+            filter: drop-shadow(0 0 6px #00ffbf);
+        }
+
+        .loader-ring::after {
+            content: "";
+            position: absolute;
+            inset: 10px;
+
+            border: 1px solid rgba(0, 255, 190, 0.12);
+            border-radius: 50%;
+        }
+
+        .loader-text {
+            z-index: 1;
+            color: #ffffff;
+            font-size: 16px;
+            letter-spacing: 1px;
+        }
+
+        @keyframes rotate-ring {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading-title {
+            margin: 0 0 14px;
+
+            font-size: 30px;
+            line-height: 1.3;
+        }
+
+        .loading-title span {
+            color: #00f2a2;
+        }
+
+        .loading-description {
+            color: #a8b9b5;
+            font-size: 15px;
+            line-height: 1.8;
+        }
+
+        .loading-warning {
+            margin-top: 26px;
+            color: #7eaaa0;
+            font-size: 12px;
+            line-height: 1.7;
+        }
+
+        /* Processing status panel */
+
+        .status-panel {
+            padding: 20px 17px;
+
+            background: rgba(5, 18, 18, 0.88);
+
+            border: 1px solid #075b4c;
+            border-radius: 15px;
+
+            box-shadow:
+                0 0 30px rgba(0, 255, 190, 0.05),
+                inset 0 0 20px rgba(0, 255, 190, 0.025);
+        }
+
+        .status-heading {
+            margin: 0 0 23px;
+
+            color: #d8fff4;
+            font-size: 17px;
+        }
+
+        .status-step {
+            display: grid;
+            grid-template-columns: 42px minmax(0, 1fr) 22px;
+            gap: 12px;
+
+            align-items: center;
+
+            min-height: 76px;
+            padding: 12px 0;
+
+            border-bottom: 1px solid rgba(75, 121, 107, 0.19);
+        }
+
+        .status-step:last-child {
+            border-bottom: none;
+        }
+
+        .status-icon {
+            width: 39px;
+            height: 39px;
+
+            display: flex;
+            align-items: center;
+            justify-content: center;
+
+            border: 1px solid #344a4d;
+            border-radius: 50%;
+
+            color: #7f9696;
+            font-size: 19px;
+        }
+
+        .status-name {
+            margin-bottom: 6px;
+
+            color: #d7e3df;
+            font-size: 13px;
+            font-weight: bold;
+        }
+
+        .status-description {
+            color: #80918d;
+            font-size: 12px;
+        }
+
+        .status-symbol {
+            color: #788a85;
+            font-size: 17px;
+            text-align: center;
+        }
+
+        /* Current processing step */
+
+        .status-step.current .status-icon {
+            border-color: #00efb0;
+            color: #00ffc3;
+
+            box-shadow: 0 0 13px rgba(0, 255, 190, 0.15);
+        }
+
+        .status-step.current .status-name,
+        .status-step.current .status-description {
+            color: #00eeb0;
+        }
+
+        .status-step.current .status-symbol {
+            color: #00ffc3;
+            animation: rotate-ring 1.5s linear infinite;
+        }
+
+        /* Completed step */
+
+        .status-step.completed .status-icon {
+            background: #00d99a;
+            border-color: #00d99a;
+            color: #032116;
+        }
+
+        .status-step.completed .status-description,
+        .status-step.completed .status-symbol {
+            color: #00eeb0;
+        }
+
+        /* Progress indicator: decorative, not a real percentage */
+
+        .progress-track {
+            height: 4px;
+            margin-top: 22px;
+
+            overflow: hidden;
+
+            background: #1c3533;
+            border-radius: 10px;
+        }
+
+        .progress-bar {
+            width: 35%;
+            height: 100%;
+
+            background: #00efb0;
+            border-radius: 10px;
+
+            animation: progress-motion 1.8s ease-in-out infinite alternate;
+        }
+
+        @keyframes progress-motion {
+            from {
+                transform: translateX(-5%);
+            }
+
+            to {
+                transform: translateX(190%);
+            }
+        }
+
+        @media (max-width: 650px) {
+            .loading-overlay {
+                align-items: flex-start;
+                padding: 28px 18px;
+            }
+
+            .loading-layout {
+                max-width: 430px;
+                grid-template-columns: 1fr;
+                gap: 30px;
+            }
+
+            .loader-ring {
+                width: 125px;
+                height: 125px;
+                margin-bottom: 24px;
+            }
+
+            .loading-title {
+                font-size: 25px;
+            }
+
+            .loading-description {
+                font-size: 14px;
+            }
+
+            .loading-warning {
+                margin-top: 16px;
+            }
+
+            .status-panel {
+                padding: 17px;
+            }
+
+            .status-heading {
+                margin-bottom: 12px;
+            }
+
+            .status-step {
+                min-height: 65px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .loader-ring::before,
+            .status-step.current .status-symbol,
+            .progress-bar {
+                animation-duration: 4s;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Existing upload page -->
+
+    <main class="main-container">
+
+        <div class="logo" aria-hidden="true">⌕</div>
+
+        <h1>Deepfake Face Detection</h1>
+
+        <p class="description">
+            Upload a video or image to begin face detection.
+        </p>
+
+        <form
+            id="uploadForm"
+            action="{{ url_for('upload') }}"
+            method="POST"
+            enctype="multipart/form-data"
+        >
+
+            <div class="upload-area">
+
+                <label for="fileInput">
+                    Select your video or image
+                </label>
+
+                <input
+                    type="file"
+                    id="fileInput"
+                    name="file"
+                    accept="image/*,video/*"
+                    required
+                >
+
+                <button
+                    type="submit"
+                    id="uploadButton"
+                    class="upload-button"
+                >
+                    Upload and Analyze
+                </button>
+
+            </div>
+
+        </form>
+
+        <p class="footer-note">
+            Processing time depends on file size and video duration.
+        </p>
+
+    </main>
+
+
+    <!-- Loading screen with circular animation and status report -->
+
+    <section
+        class="loading-overlay"
+        id="loadingOverlay"
+        role="status"
+        aria-live="polite"
+        aria-hidden="true"
+    >
+
+        <div class="loading-layout">
+
+            <!-- Left side: circular loader -->
+
+            <div class="loading-left">
+
+                <div class="loader-ring" aria-hidden="true">
+                    <span class="loader-text">LOADING...</span>
+                </div>
+
+                <h2 class="loading-title">
+                    Analyzing <span>Your Video</span>
+                </h2>
+
+                <p class="loading-description">
+                    Detecting faces and processing video frames.
+                </p>
+
+                <p class="loading-warning">
+                    This may take a little while.<br>
+                    Please don't close or refresh this page.
+                </p>
+
+            </div>
+
+
+            <!-- Right side: processing status report -->
+
+            <div class="status-panel">
+
+                <h3 class="status-heading">
+                    Processing Status
+                </h3>
+
+                <div class="status-step current" id="step-reading">
+
+                    <div class="status-icon" aria-hidden="true">▤</div>
+
+                    <div>
+                        <div class="status-name">
+                            Reading video file
+                        </div>
+
+                        <div class="status-description" id="text-reading">
+                            In progress...
+                        </div>
+                    </div>
+
+                    <div class="status-symbol" id="symbol-reading">◌</div>
+
+                </div>
+
+
+                <div class="status-step" id="step-detecting">
+
+                    <div class="status-icon" aria-hidden="true">◎</div>
+
+                    <div>
+                        <div class="status-name">
+                            Detecting faces
+                        </div>
+
+                        <div class="status-description" id="text-detecting">
+                            Waiting...
+                        </div>
+                    </div>
+
+                    <div class="status-symbol" id="symbol-detecting">○</div>
+
+                </div>
+
+
+                <div class="status-step" id="step-analyzing">
+
+                    <div class="status-icon" aria-hidden="true">⌛</div>
+
+                    <div>
+                        <div class="status-name">
+                            Analyzing frames
+                        </div>
+
+                        <div class="status-description" id="text-analyzing">
+                            Waiting...
+                        </div>
+                    </div>
+
+                    <div class="status-symbol" id="symbol-analyzing">○</div>
+
+                </div>
+
+
+                <div class="status-step" id="step-saving">
+
+                    <div class="status-icon" aria-hidden="true">▤</div>
+
+                    <div>
+                        <div class="status-name">
+                            Saving results
+                        </div>
+
+                        <div class="status-description" id="text-saving">
+                            Waiting...
+                        </div>
+                    </div>
+
+                    <div class="status-symbol" id="symbol-saving">○</div>
+
+                </div>
+
+                <div class="progress-track" aria-hidden="true">
+                    <div class="progress-bar"></div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <script>
+        const uploadForm = document.getElementById("uploadForm");
+        const fileInput = document.getElementById("fileInput");
+        const uploadButton = document.getElementById("uploadButton");
+        const loadingOverlay = document.getElementById("loadingOverlay");
+
+        uploadForm.addEventListener("submit", function (event) {
+
+            if (!fileInput.files || fileInput.files.length === 0) {
+                event.preventDefault();
+                alert("Please select a file first.");
+                return;
+            }
+
+            // Prevent accidental repeated uploads.
+            uploadButton.disabled = true;
+            uploadButton.textContent = "Processing...";
+
+            // Reset the status report.
+            const steps = ["reading", "detecting", "analyzing", "saving"];
+
+            steps.forEach(function (name) {
+                document.getElementById("step-" + name)
+                    .classList.remove("current", "completed");
+
+                document.getElementById("text-" + name).textContent =
+                    "Waiting...";
+
+                document.getElementById("symbol-" + name).textContent = "○";
+            });
+
+            // Show the loading screen.
+            loadingOverlay.classList.add("active");
+            loadingOverlay.setAttribute("aria-hidden", "false");
+
+            // The current Flask endpoint does not report live progress.
+            // Therefore, show an honest indeterminate loading animation
+            // rather than pretending these stages have really completed.
+            document.getElementById("step-reading").classList.add("current");
+            document.getElementById("text-reading").textContent =
+                "Upload submitted...";
+            document.getElementById("symbol-reading").textContent = "◌";
+
+        });
+    </script>
+
+</body>
+</html>

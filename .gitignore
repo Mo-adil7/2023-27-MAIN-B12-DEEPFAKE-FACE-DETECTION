@@ -1,0 +1,33 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+.venv/
+venv/
+env/
+.tensorflow-gpu-env/
+.venv-convert/
+
+# Local datasets and extracted frames
+data/
+prepared_dataset/
+
+# Uploaded videos and detected faces
+uploads/
+detected_faces/
+
+# Training outputs and temporary files
+*.log
+*.tmp
+*.swp
+.ipynb_checkpoints/
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.vscode/
+# Original large PyTorch pretrained weights
+models/pretrained/alexnet-owt-7be5be79.pth
+prepare_dataset.py.save

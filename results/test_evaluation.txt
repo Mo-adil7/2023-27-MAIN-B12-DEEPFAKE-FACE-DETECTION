@@ -1,0 +1,45 @@
+# Deepfake Face Detection — Test Evaluation
+
+## Model
+
+Architecture: AlexNet feature extractor + LSTM
+Checkpoint: best_alexnet_lstm.keras
+Decision threshold: 0.5
+Test videos: 902
+
+## Dataset distribution
+
+* FAKE videos: 795
+* REAL videos: 107
+
+## Overall metrics
+
+* Accuracy: 74.50%
+* ROC-AUC: 0.6689
+
+## Classification metrics
+
+| Class | Precision | Recall | F1-score | Support |
+| ----- | --------: | -----: | -------: | ------: |
+| FAKE  |    0.9124 | 0.7862 |   0.8446 |     795 |
+| REAL  |    0.2166 | 0.4393 |   0.2901 |     107 |
+
+Macro-average F1-score: 0.5674
+Weighted-average F1-score: 0.7788
+
+## Confusion matrix
+
+Rows represent actual labels; columns represent predicted labels.
+
+|             | Predicted FAKE | Predicted REAL |
+| ----------- | -------------: | -------------: |
+| Actual FAKE |            625 |            170 |
+| Actual REAL |             60 |             47 |
+
+## Interpretation
+
+The model performs better at identifying FAKE videos than REAL videos. The relatively low precision and F1-score for the REAL class indicate that the model needs further improvement.
+
+The ROC-AUC of 0.6689 indicates modest discrimination between the two classes. The results should be treated as an initial experimental baseline, not evidence of reliable real-world deepfake detection.
+
+The evaluation used the held-out test split, which was not used for training or checkpoint selection.

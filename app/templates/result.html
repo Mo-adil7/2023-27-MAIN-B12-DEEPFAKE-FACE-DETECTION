@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Detection Result</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 20px;
+
+            min-height: 100vh;
+
+            display: flex;
+            justify-content: center;
+            align-items: center;
+
+            background-color: #121212;
+
+            color: #ffffff;
+
+            font-family: Arial, sans-serif;
+        }
+
+        .result-container {
+            width: 100%;
+            max-width: 650px;
+
+            padding: 40px 30px;
+
+            text-align: center;
+
+            background-color: #1e1e1e;
+
+            border-radius: 16px;
+
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+        }
+
+        .success-title {
+            margin-top: 0;
+            margin-bottom: 20px;
+
+            color: #00c853;
+
+            font-size: 34px;
+        }
+
+        .error-title {
+            margin-top: 0;
+            margin-bottom: 20px;
+
+            color: #ff5252;
+
+            font-size: 30px;
+        }
+
+        .uploaded-file {
+            margin-bottom: 25px;
+
+            color: #dddddd;
+
+            font-size: 16px;
+
+            overflow-wrap: anywhere;
+        }
+
+        .face-count-box {
+            margin: 25px auto;
+
+            padding: 25px 15px;
+
+            max-width: 320px;
+
+            background-color: #292929;
+
+            border: 1px solid #333333;
+
+            border-radius: 12px;
+        }
+
+        .face-count-label {
+            margin: 0 0 12px;
+
+            color: #cccccc;
+
+            font-size: 18px;
+        }
+
+        .face-count-number {
+            margin: 0;
+
+            color: #00c853;
+
+            font-size: 48px;
+
+            font-weight: bold;
+        }
+
+        .face-count-note {
+            margin-top: 12px;
+
+            color: #aaaaaa;
+
+            font-size: 13px;
+
+            line-height: 1.6;
+        }
+
+        .no-results {
+            margin: 25px 0;
+
+            padding: 18px;
+
+            background-color: #292929;
+
+            border-radius: 10px;
+
+            color: #ffcc80;
+
+            line-height: 1.6;
+        }
+
+        .button {
+            display: inline-block;
+
+            margin-top: 15px;
+
+            padding: 14px 28px;
+
+            background-color: #00c853;
+
+            color: #ffffff;
+
+            text-decoration: none;
+
+            font-size: 16px;
+
+            font-weight: bold;
+
+            border: none;
+
+            border-radius: 9px;
+
+            cursor: pointer;
+
+            transition: background-color 0.2s;
+        }
+
+        .button:hover {
+            background-color: #00a844;
+        }
+
+        @media (max-width: 480px) {
+
+            .result-container {
+                padding: 30px 18px;
+            }
+
+            .success-title {
+                font-size: 27px;
+            }
+
+            .error-title {
+                font-size: 25px;
+            }
+
+            .face-count-number {
+                font-size: 42px;
+            }
+
+            .button {
+                width: 100%;
+                padding: 14px 12px;
+            }
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <main class="result-container">
+
+        {% if results %}
+
+            <h1 class="success-title">
+                Face Detection Completed!
+            </h1>
+
+            <p class="uploaded-file">
+                Uploaded file:
+                <strong>{{ filename }}</strong>
+            </p>
+
+            <section class="face-count-box">
+
+                <p class="face-count-label">
+                    👤 Faces Detected
+                </p>
+
+                <p class="face-count-number">
+                    {{ results.faces_detected }}
+                </p>
+
+            </section>
+
+            <p class="face-count-note">
+                This number represents face detections across
+                the processed video frames, not the number of
+                unique people in the video.
+            </p>
+
+        {% else %}
+
+            <h1 class="error-title">
+                Detection Result
+            </h1>
+
+            <div class="no-results">
+                {{ message or "No detection results are available." }}
+            </div>
+
+        {% endif %}
+
+        <a href="{{ url_for('home') }}" class="button">
+            Upload Another File
+        </a>
+
+    </main>
+
+</body>
+
+</html>
