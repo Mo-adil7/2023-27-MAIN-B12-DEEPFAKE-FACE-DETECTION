@@ -1,4 +1,4 @@
-# Python cache
+﻿# Python cache
 __pycache__/
 *.py[cod]
 *.pyo
@@ -31,3 +31,13 @@ Thumbs.db
 # Original large PyTorch pretrained weights
 models/pretrained/alexnet-owt-7be5be79.pth
 prepare_dataset.py.save
+
+# Generated results and backups
+results/web/
+detected_faces_backup/
+app_backup_*/
+grid_count_backup_*/
+people_count_backup_*/
+*.backup
+*.backup2
+*.demo-backup

@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>{% block title %}Deepfake · Analysis Lab{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='lab.css') }}">
+</head>
+<body>
+  <aside class="sidebar">
+    <a class="brand" href="{{ url_for('home') }}" aria-label="Deepfake Analysis Lab home"><span class="brand-icon">◈</span><span>DEEPFAKE<small>ANALYSIS LAB</small></span></a>
+    <div class="nav-label">WORKSPACE</div>
+    <a class="nav-item {% if request.endpoint not in ['admin','admin_access'] %}active{% endif %}" href="{{ url_for('home') }}"><span>⌘</span> Video analysis <span class="nav-arrow">↗</span></a>
+    <a class="nav-item {% if request.endpoint in ['admin','admin_access'] %}active{% endif %}" href="{{ url_for('admin_access') }}"><span>⊞</span> Admin access</a>
+    <div class="sidebar-bottom">
+      <div class="model-chip"><span class="status-dot"></span> RESEARCH PROTOTYPE</div>
+      <h3>AlexNet + LSTM</h3><p>Spatial features.<br>Temporal patterns.</p>
+      <div class="model-details"><span>Sequence length</span><strong>8 frames</strong><span>Input resolution</span><strong>224 × 224</strong></div>
+      <div class="sidebar-footer">Deepfake Face Detection Using ML</div>
+    </div>
+  </aside>
+  <div class="workspace">
+    <header class="topbar"><div>Workspace <span>/</span> <strong>{% block breadcrumb %}Video analysis{% endblock %}</strong></div><span class="top-badge">LOCAL DEMO <span class="status-dot"></span></span></header>
+    <main>{% block content %}{% endblock %}</main>
+    <footer class="page-footer"><span>DEEPFAKE ANALYSIS LAB</span><span>Experimental model · Review predictions with care</span></footer>
+  </div>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
